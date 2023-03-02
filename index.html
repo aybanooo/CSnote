@@ -112,7 +112,7 @@
             }
             if(toBeRemoved.length != removeCount) {
                 const message = `${removeCount} group/s should have empty data`;
-                this.value += 1;
+                this.value = Number(this.value) + 1;
                 alert(message);
             } else {
                 for(let card of toBeRemoved) card.remove();
