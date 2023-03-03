@@ -20,13 +20,13 @@ class TemplateManager {
             return tempFrag.content.children[0];
     }
     static putParameters(template, params) {
-        var _a;
-        const keys = [...template.matchAll(/(?<={{)[\w|\\.]*(?=}})/g)].flat();
+        var _a, _b;
+        const keys = ((_a = template.match(/({{\w+}})/g)) !== null && _a !== void 0 ? _a : [""]).map((x) => x.replaceAll("{{", "").replace("}}", "")); // [...template.matchAll(/(?<={{)[\w|\\.]*(?=}})/g)].flat();
         for (const key in keys) {
             if (params == null)
                 template = template.replace(`{{${keys[key]}}}`, "");
             else {
-                const value = (_a = params[keys[key]]) !== null && _a !== void 0 ? _a : "";
+                const value = (_b = params[keys[key]]) !== null && _b !== void 0 ? _b : "";
                 template = template.replace(`{{${keys[key]}}}`, value);
             }
         }
