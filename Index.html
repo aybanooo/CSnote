@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@1.*/css/pico.min.css"> -->
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous"> -->
+    <link rel="stylesheet" href="./dist/css/site.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f5f5f5;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        body {
+            background-image: url("https://images.pexels.com/photos/7629262/pexels-photo-7629262.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1");
+            background-size: cover;
+        }
+
+        .card, .card-footer {
+            background-color: white;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <input hidden type="file" accept=".json" id="inp-import">
+    <main class="container">
+        
+        <div class="row">
+            <div class="col-12 col-md-10 col-lg-8 col-xl-6 mx-auto">
+                <div class="row row-cols-1 row-cols-sm-2">
+                    <div class="col">
+                        <div class="mb-3 input-group">
+                            <button type="button" class="btn btn-secondary" onclick="Decrease()" data-dec>-</button>
+                            <input id="inp-entries-count" readonly class="form-control form-control-sm text-center" min="1" max="10" type="number" name="inp-entries-count" title="Entries Count" placeholder="0" value="">
+                            <button type="button" class="btn btn-secondary" onclick="Increase()" data-inc>+</button>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="mb-3 d-grid">
+                            <div class="btn-group" role="group" aria-label="Basic example">
+                                <button id="btn-getpending" class="btn btn-primary btn-sm" disabled>Pending<span class="badge bg-dark ms-2">0</span></button>
+                                <button id="btn-exportpending" class="btn btn-info btn-sm" onclick="ExportPending()">Export</button>
+                                <button id="btn-importpending" class="btn btn-info btn-sm">Import</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 col-md-10 col-lg-8 col-xl-6 mx-auto" id="entries">
+
+            </div>
+        </div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.3/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<template id="template-card">
+    <div class="card mb-3 border-0 shadow-sm" data-csnote-row data-id="{{id}}">
+        <div class="card-body">
+        </div>
+        <div class="card-footer d-flex justify-content-end gap-2">
+            <button onclick="AddRedemption(this)" class="btn btn-sm btn-warning btn-redemp">For Redemption</button>
+            <button onclick="ToPending(this)" class="btn btn-sm btn-warning">Pend</button>
+            <button onclick="Clear(this)" class="btn btn-sm btn-danger">Clear</button>
+        </div>
+</template>
+<template id="template-inp">
+    <div class="mb-2 d-flex gap-2">
+        <input data-id="{{dataid}}" class="form-control form-control-sm" type="{{type}}" title="{{title}}" placeholder="{{label}}" value="{{value}}">
+        <button onclick="ToClipboard(this)" type="button" role="button" class="btn btn-link text-dark cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" title="Copy">
+            <i class="far fa-copy"></i>
+        </button>
+      </div>
+</template>
+<template id="template-txt">
+    <div class="d-flex gap-2 mb-2">
+        <textarea data-id="{{dataid}}" class="form-control form-control-sm" style="resize:vertical;" type="{{type}}" title="{{title}}" placeholder="{{label}}" rows="{{rows}}">{{value}}</textarea>
+        <button onclick="ToClipboard(this)" type="button" role="button" class="btn btn-link text-dark cursor-pointer" data-bs-toggle="tooltip" data-bs-placement="top" title="Copy">
+            <i class="far fa-copy"></i>
+        </button>
+    </div>  
+</template>
+
+<script src="./dist/js/TemplateManager.js"></script>
+<script src="./dist/js/CSNote-bundle.js"></script>
+<script>
+    const appName = "demo_CSNote",
+    appConfig = {
+        id: appName,
+        storage: "pouchdb",
+        autosaveDuration: 3000
+    };
+    
+    const app = new CSNote(appConfig);
+
+    !async function init() {
+        const count = await app.DataCount;
+        const defEntryCount = 3;
+        const defField = CSNote.defaultFields;
+        const defFieldKeys = CSNote.defaultFields.map( x => x.id);
+        const cards = [];
+        if(count == 0)
+            for(let i=0; i<defEntryCount; i++) {
+                app.AddViewItem( new Map( defFieldKeys.map(x => [x, ""]) ) );
+            }
+        const data = await app.GetViewItems();
+        RenderInitialCards(defField, data);
+        app.PendingCount
+        .then(count => {
+            if(count > 0 ) {
+                BTN_PENDING.querySelector('.badge').textContent = count;
+                BTN_PENDING.removeAttribute('disabled');
+            }
+        });
+        ENTRIES_COUNT_NODE.value = await app.DataCount;
+        // RenderExisting(data, defField)
+    }();
+
+    function UpdateCard(e) {
+        const fieldSelector = '[data-id]';
+        const card = this.closest('[data-csnote-row]');
+        const data = [...card.querySelectorAll(fieldSelector)].map(x => [x.getAttribute('data-id'), x.value]);
+        const id = card.getAttribute('data-id').trim();
+        const form = {
+            id: id,
+            values: new Map(data)
+        };
+        return app.ViewIdExist(form.id)
+        .then(exists => {
+            if(exists) return app.UpdateViewItem(form); 
+            else return app.AddViewItem(form.values);
+        })
+        .then(resp => {
+            PopulateCard(card, resp.values);
+            card.id = resp.id;
+        })
+        .catch( err => {
+            alert("Can't save");
+            console.log(err);
+        });
+    }
+
+    function AddRedemption(e) {
+        
+        const fieldSelector = '[data-id]';
+        const card = e.closest('[data-csnote-row]');
+        const data = [...card.querySelectorAll(fieldSelector)].map(x => [x.getAttribute('data-id'), x.value]);
+        const id = card.getAttribute('data-id').trim();
+        const form = {
+            id: id,
+            values: new Map(data)
+        };
+        form.values.set('redemp', "Test label:\nTest Label 2:");
+        return app.ViewIdExist(form.id)
+        .then(exists => {
+            if(exists) return app.UpdateViewItem(form); 
+            else return app.AddViewItem(form.values);
+        })
+        .then(resp => {
+            PopulateCard(card, resp.values);
+            card.id = resp.id;
+        })
+        .catch( err => {
+            alert("Can't save");
+            console.log(err);
+        });
+    }
+
+    function Decrease() {
+        app.RemoveEmptyViewItem()
+        .then(async x => {
+            if(x.ok) {
+                const target = document.querySelector(`[data-id="${x.id}"]`);
+                target.remove();
+            }
+            ENTRIES_COUNT_NODE.value = await app.DataCount;
+        })
+    }
+
+    function Increase() {
+        const defField = CSNote.defaultFields;
+        const defFieldKeys = CSNote.defaultFields.map( x => x.id);
+        app.AddViewItem( new Map( defFieldKeys.map(x => [x, ""]) ) )
+        .then( async x => {
+            const newCard = GenerateEmptyCard(defField, x.id);
+            PopulateCard(newCard, x.values);
+            const cardContainer = ENTRIES_NODE;
+            cardContainer.append(newCard);
+            ENTRIES_COUNT_NODE.value = await app.DataCount;
+        })
+    }
+
+    function RenderInitialCards(defFields, data) {
+        const cardContainer = ENTRIES_NODE;
+        const cards = [];
+        for(let i=0; i<data.length;i++) {
+            const newCard = GenerateEmptyCard(defFields, data[i].id);
+            PopulateCard(newCard, data[i].values);
+            cards.push(newCard);
+        }
+        cardContainer.append(...cards);
+    }
+    
+    function GenerateEmptyCard(fields, id) {;
+        let card
+        if(id != null) {
+            const injectable = {
+                id: id
+            };
+            card = TemplateManager.getTemplate('template-card', injectable);
+        } else {
+            card = TemplateManager.getTemplate('template-card');
+        }
+        for(const field of fields) {
+            field.dataid = field.id;
+            let node;
+            if(field.tag === "INPUT") {
+                node = TemplateManager.getTemplate('template-inp', field);
+            } else if(field.tag === "TEXTAREA") {
+                    node = TemplateManager.getTemplate('template-txt', field);
+                    if(field.dataid === "redemp") node.classList.toggle('d-none', true);
+            }
+            card.querySelector('.card-body').append(node);
+        }
+        card.addEventListener('change', (event) => {
+            if (event.target.closest('input, textarea')) {
+                UpdateCard.call(event.target, event);
+            }
+        });
+        var tooltipTriggerList = [].slice.call(card.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        return card;
+    }
+
+    function GenerateCard(id, fields) {
+        const card = TemplateManager.getTemplate('template-card');
+        for(const field of fields) {
+            field.dataid = field.id;
+            let node;
+            if(field.tag === "INPUT") {
+                node = TemplateManager.getTemplate('template-inp', field);
+            } else if(field.tag === "TEXTAREA") {
+                node = TemplateManager.getTemplate('template-txt', field);
+            }
+            card.querySelector('.card-body').append(node);
+        }
+        var tooltipTriggerList = [].slice.call(card.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        return card;
+    }
+
+    function PopulateCard(card, data) {
+        for(let key of data.keys()) {
+            const target = card.querySelector(`[data-id="${key}"]`);
+            target.value = data.get(key);
+            if(key==="redemp") {
+                const hide = data.get(key).trim() === "";
+                target.parentElement.classList.toggle('d-none', hide);
+                if(!hide)
+                    card.querySelector('.btn-redemp').setAttribute('disabled', "");
+            }
+        }
+    }
+
+    const ENTRIES_COUNT_NODE = document.getElementById('inp-entries-count');
+    const ENTRIES_NODE = document.getElementById('entries');
+    const BTN_PENDING = document.getElementById('btn-getpending');
+    const BTN_IMPORT = document.getElementById('btn-importpending');
+    const FILE_IMPORT = document.getElementById('inp-import');
+
+    BTN_IMPORT.addEventListener('click', () => {
+        FILE_IMPORT.value = null;
+        FILE_IMPORT.click();
+        throw new Error("Under migration");
+    });
+
+    FILE_IMPORT.addEventListener('change', importPending);
+    BTN_PENDING.addEventListener('click', function () {
+        app.GetPending()
+        .then(data => {
+            updatePendingState();
+            const id = data.id;
+            const target = document.querySelector(`[data-id="${id}"]`);
+            PopulateCard(target, data.values);
+        })
+        .catch(er => {
+            console.warn(er);
+            showError(er);
+        })
+    });
+
+    document.getElementById('inp-entries-count').addEventListener('change', function() {
+        throw new Error("Under migration");
+    })
+    
+    function RenderFieldData(fieldData) {
+        throw new Error("Under migration");
+    }
+
+    function collectData(node, fields) {
+        throw new Error("Under migration");
+    }
+
+    function collectIds(fields, propName) {
+        throw new Error("Under migration");
+    }
+
+    const promptMoveToPending = Swal.mixin({
+        customClass: {
+            confirmButton: 'btn btn-warning me-2',
+            cancelButton: 'btn btn-secondary'
+        },
+        buttonsStyling: false
+    });
+
+    const promptClear = Swal.mixin({
+        customClass: {
+            confirmButton: 'btn btn-danger me-2',
+            cancelButton: 'btn btn-secondary'
+        },
+        buttonsStyling: false
+    });
+
+    function askPendingMove() {
+        return promptMoveToPending.fire({
+            focusCancel: true,
+            title: 'Are your sure!',
+            text: 'Note will be moved to pending',
+            icon: 'warning',
+            confirmButtonText: 'Move to pending',
+            showCancelButton: true
+        }
+        ,
+        'question'
+        );
+    }
+
+    function askClear() {
+        return promptClear.fire({
+            focusCancel: true,
+            title: 'Are your sure!',
+            text: 'Note will cleared',
+            icon: 'warning',
+            confirmButtonText: 'Clear',
+            showCancelButton: true
+        }
+        ,
+        'question'
+        );
+    }
+
+    async function ToPending(el) {
+        const fieldSelector = '[data-id]';
+        const card = el.closest('[data-csnote-row]');
+        const data = [...card.querySelectorAll(fieldSelector)].map(x => [x.getAttribute('data-id'), x.value]);
+        const id = card.getAttribute('data-id').trim();
+        app.ToPending(id)
+        .then(async x => {
+            PopulateCard(card, x.values);
+            updatePendingState();
+        });
+    }
+    
+    async function Clear(el) {
+        const card = el.closest('[data-csnote-row]');
+        const id = card.getAttribute('data-id');
+        const {isConfirmed, isDenied, isDismissed, value} = await askClear();
+        if(isDismissed) return
+        app.ClearViewItem(id)
+        .then(async x => {
+            PopulateCard(card, x.values);
+            updatePendingState();
+            card.querySelectorAll('button').forEach(element => {
+                element.removeAttribute('disabled');
+            });
+        });
+    }
+
+    function createCard(fields) {
+        throw new Error("Under migration");
+    }
+
+    function IdIsAssigned(id) {
+        throw new Error("Under migration");
+    }
+
+    function ToClipboard(e) {
+        const data = e.previousElementSibling.value;
+        navigator.clipboard.writeText(data);
+    }
+
+    function ExportPending(exportObj, exportName) {
+        throw new Error("Under migration");
+        // download an object as json text file using html?
+        const obj = pending;
+        const FILENAME = "pending.json";
+        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj));
+        var downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", FILENAME);
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function importPending(e) {
+        throw new Error("Under migration");
+        const node = e.target;
+        const files = node.files;
+        new Response(files[0]).json().then(json => {
+            pending.push(...json);
+            updatePendingState();
+        }, err => {
+            showError("Not a valid file");
+        });
+    }
+
+    function updatePendingState() {
+        const node = BTN_PENDING;
+        app.PendingCount
+        .then(count => {
+            node.querySelector('.badge').textContent = count;
+            if(count == 0) {
+                node.setAttribute('disabled', null);
+            } else {
+                node.removeAttribute('disabled');
+            }
+        })
+    }
+
+    function showError(...msg) {
+        let [message, title] = msg;
+        alert(message);
+    }
+
+</script>
+</body>
+</html>
