@@ -159,7 +159,7 @@
             id: id,
             values: new Map(data)
         };
-        form.values.set('redemp', "HHID\nNAME:\nCLUBCARD:\nPHONE NUMBER:\nOffer ID:\nOffer Description\nTransaction Date and Time:\nStore#:\nReason:\nMGO loaded:");
+        form.values.set('redemp', "HHID:\nNAME:\nCLUBCARD:\nPHONE NUMBER:\nOffer ID:\nOffer Description\nTransaction Date and Time:\nStore#:\nReason:\nMGO loaded:");
         return app.ViewIdExist(form.id)
         .then(exists => {
             if(exists) return app.UpdateViewItem(form); 
