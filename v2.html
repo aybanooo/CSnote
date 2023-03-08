@@ -271,6 +271,8 @@
                 target.parentElement.classList.toggle('d-none', hide);
                 if(!hide)
                     card.querySelector('.btn-redemp').setAttribute('disabled', "");
+                } else 
+                    card.querySelector('.btn-redemp').removeAttribute('disabled');
             }
         }
     }
