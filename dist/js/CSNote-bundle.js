@@ -17882,7 +17882,7 @@ DefaultFields.push({
     label: "Redemption",
     type: 'text',
     tag: "TEXTAREA",
-    rows: 6
+    rows: 10
 });
 class CSNote {
     static get defaultFields() {
